@@ -7,12 +7,12 @@
 
 pkgname=leigod-steamdeck-plugin
 pkgver=1.3.0.01
-pkgrel=2
+pkgrel=3
 pkgdesc="Leigod accelerator SteamDeck plugin on generic Linux via systemd SteamDeck emulation"
 arch=('x86_64')
 url="https://www.leigod.com"
 license=('custom:proprietary')
-depends=('curl' 'iproute2' 'iptables' 'ipset' 'sslh')
+depends=('curl' 'iproute2' 'iptables' 'ipset' 'nftables' 'sslh')
 install='leigod-plugin.install'
 options=('!strip' '!debug')
 backup=('etc/leigod/sslh-guard.cfg' 'etc/leigod/device.conf')
@@ -39,6 +39,7 @@ source=(
     'fake_os_release'
     'fake_version'
     'ensure-wlan0.sh'
+    'firewall.sh'
     'run.sh'
     'sslh-guard.cfg'
     'device.conf'
@@ -48,18 +49,19 @@ source=(
 sha256sums=('f81ec6a7e1a5bcef8cb8d1bf233141ece7d54250881422ecc2814c98df819e23'
             '3536000ee9eb3997538cb37a14f90d571979734c48b23b8d548eceac16666273'
             '5b0b4948d870adc608c0a674ec4997dc1db650fe65e36548744bcfa63336440e'
-            '6611120e2dcbc516b8dcc33512a8d8b1a3b02b3680576c32aaea30e3cce77d32'
+            '14d8454d2e34e35c67a26a24d226f28de2d48b43c26cc7d039fa6ad92c288a9d'
             '417a0a88af9989770a351da4727fe7df5b1265e4cc8c3a5ba2b4ab35750783d4'
             '2b86241cd8c32709ee99b9162c270308396186766e3348ca0a000ef0aa25c69c'
             'ee5b87871d52e6f5852c09b59110183346579a47a474c57a6a67fb55210d8580'
             'd20c01fa15205e8e2f8f2d937d87871d367ecb62423de141d07daed2ea3b9a9c'
             'fe9de708249b35ffe1c4f97dbede7278d5ded8c64ff512e82d024c6228aaa9ee'
-            '2021df0d9b12323915633e3a72f0cd2a8ec55f9f81892f82eb11ad261d5d490d'
+            '46ace551c97fb72d6fb144648055041aad5661f593566f2641baae91ef87a061'
+            'e1365db931291aefa0be7af622a15c974db565960d811e5e1cb9472a1a3a2034'
             'a89e2e2f2c48eadfa75c67236b427cb44e1dbd842956bca9bc8bb2e4a744b6ff'
             '26426ed86918ab11635f1ad15c19f3514661c74b1c73dcd9196e768162514f63'
-            'f6f224c4b5a45154ccf900bd18250013ae55c7f58bddb66f72c42f51b49ee4c0'
+            '8f458ffcced42ff9fdbf3ee97bcd2d64a079202ee85c0cef20d19b2d08298184'
             '32e08c7e86519b470c1e7043a4ba613136534faae8b19937d0376046f7543105'
-            '811d6d3aa1e4cab597c991ccd1016c4e153dd79b57f81683cac2ded889753c9c')
+            '1e03eaecbbfb5abf90e121e3c44f7a6a6adcd824a88ab89391b21cf3da3255cd')
 
 prepare() {
     # web 进程端口后移到 5589, 5588 让给 sslh 门前过滤
@@ -107,6 +109,7 @@ package() {
 
     # 辅助脚本与 systemd 单元
     install -Dm755 "$srcdir/ensure-wlan0.sh" "$pkgdir/usr/lib/leigod/ensure-wlan0.sh"
+    install -Dm755 "$srcdir/firewall.sh" "$pkgdir/usr/lib/leigod/firewall.sh"
     install -Dm755 "$srcdir/run.sh" "$pkgdir/usr/lib/leigod/run.sh"
     install -Dm644 "$srcdir/leigod.service" "$pkgdir/usr/lib/systemd/system/leigod.service"
     install -Dm644 "$srcdir/mirror.conf.example" "$pkgdir/usr/share/leigod/mirror.conf.example"

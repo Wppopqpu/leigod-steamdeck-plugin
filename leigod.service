@@ -7,12 +7,16 @@
 [Unit]
 Description=Leigod accelerator plugin (systemd hardened SteamDeck sandbox, shared network)
 Wants=network-online.target
-After=network-online.target
+After=network-online.target nftables.service
 
 [Service]
 Type=simple
-ExecStartPre=/usr/lib/leigod/ensure-wlan0.sh
+ExecStartPre=/usr/lib/leigod/firewall.sh setup
+ExecStartPre=/usr/lib/leigod/ensure-wlan0.sh setup
 ExecStart=/usr/lib/leigod/run.sh /home/deck/leigod/steamdeck_acc_monitor.sh release
+# Attempt both cleanups, including after a failed ExecStartPre.
+ExecStopPost=-/usr/lib/leigod/firewall.sh cleanup
+ExecStopPost=/usr/lib/leigod/ensure-wlan0.sh cleanup
 Restart=always
 RestartSec=3
 KillMode=control-group
