@@ -5,3 +5,5 @@ pkg/
 acc-gw.router.amd64
 ipdatacloud_country.xdb
 steamdeck_acc_monitor.sh
+__pycache__/
+*.py[cod]

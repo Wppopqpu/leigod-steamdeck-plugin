@@ -7,7 +7,7 @@
 
 pkgname=leigod-steamdeck-plugin
 pkgver=1.3.0.01
-pkgrel=4
+pkgrel=5
 pkgdesc="Leigod accelerator SteamDeck plugin on generic Linux via systemd SteamDeck emulation"
 arch=('x86_64')
 url="https://www.leigod.com"
@@ -45,6 +45,10 @@ source=(
     'device.conf'
     'mirror.conf.example'
     'leigod.conf'
+    'LICENSE'
+    'README.md'
+    'TROUBLESHOOTING.md'
+    'AUDIT.md'
 )
 sha256sums=('f81ec6a7e1a5bcef8cb8d1bf233141ece7d54250881422ecc2814c98df819e23'
             '3536000ee9eb3997538cb37a14f90d571979734c48b23b8d548eceac16666273'
@@ -61,7 +65,11 @@ sha256sums=('f81ec6a7e1a5bcef8cb8d1bf233141ece7d54250881422ecc2814c98df819e23'
             '26426ed86918ab11635f1ad15c19f3514661c74b1c73dcd9196e768162514f63'
             '8f458ffcced42ff9fdbf3ee97bcd2d64a079202ee85c0cef20d19b2d08298184'
             '32e08c7e86519b470c1e7043a4ba613136534faae8b19937d0376046f7543105'
-            '1e03eaecbbfb5abf90e121e3c44f7a6a6adcd824a88ab89391b21cf3da3255cd')
+            '1e03eaecbbfb5abf90e121e3c44f7a6a6adcd824a88ab89391b21cf3da3255cd'
+            'af2d7249c8d84338a1b89ae56bcb987826d6151b908f969799728b590c13067c'
+            '224777babb84aef10d3a3b97bfbac0158ecd0219850e4595ee8cd1ede2000be3'
+            '1b2cda745d7b0a7124cee0ad045624ad3a9230caecfa9e0b95a296c97372e792'
+            'b7be2e750dd8cfa36ed5b08c07ec2cf11e88a939f0699beb75023f1b4e9f14d7')
 
 prepare() {
     # web 进程端口后移到 5589, 5588 让给 sslh 门前过滤
@@ -113,6 +121,12 @@ package() {
     install -Dm755 "$srcdir/run.sh" "$pkgdir/usr/lib/leigod/run.sh"
     install -Dm644 "$srcdir/leigod.service" "$pkgdir/usr/lib/systemd/system/leigod.service"
     install -Dm644 "$srcdir/mirror.conf.example" "$pkgdir/usr/share/leigod/mirror.conf.example"
+
+    # The license covers packaging only; upstream artifacts remain proprietary.
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    for _doc in README.md TROUBLESHOOTING.md AUDIT.md; do
+        install -Dm644 "$srcdir/$_doc" "$pkgdir/usr/share/doc/$pkgname/$_doc"
+    done
 
     # 预加载内核模块(tun/dummy): 沙箱无 SYS_MODULE, 模块须宿主侧就绪
     install -Dm644 "$srcdir/leigod.conf" "$pkgdir/usr/lib/modules-load.d/leigod.conf"
