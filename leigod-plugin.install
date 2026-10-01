@@ -1,74 +1,95 @@
 #!/bin/bash
-
-# 绑定状态(token/user_id/once)由官方二进制持续写入
-# /opt/leigod/config/accelerator.ini。该文件由本包布放(官方模板), 不进 backup=
-# (二进制每几分钟重写一次, backup 会产生无穷 .pacnew), 因此升级/重装会覆盖它,
-# 手机 App 就要求重新绑定。以下钩子在覆盖前后保存并恢复整个文件。
-
+# Preserve runtime binding state without placing credentials in shared /tmp.
 BIND_FILE=/opt/leigod/config/accelerator.ini
-BIND_SAVE=/tmp/leigod-bind-state.ini
+STATE_DIR=/var/lib/leigod-package-state
+BIND_SAVE=$STATE_DIR/accelerator.ini
+RESTART_FILE=$STATE_DIR/restart-service
+
+prepare_state_dir() {
+    install -d -m700 "$STATE_DIR"
+}
 
 save_bind_state() {
-    if [ -f "$BIND_FILE" ] && grep -q '^token=..*' "$BIND_FILE"; then
-        cp -f "$BIND_FILE" "$BIND_SAVE"
+    if [ -f "$BIND_FILE" ]; then
+        if grep -qE '^[[:space:]]*token[[:space:]]*=[[:space:]]*[^[:space:]]' "$BIND_FILE"; then
+            prepare_state_dir || return 1
+            install -m600 "$BIND_FILE" "$BIND_SAVE"
+        else
+            # Do not resurrect an older binding after an intentional unbind.
+            rm -f "$BIND_SAVE"
+        fi
     fi
 }
 
 restore_bind_state() {
     if [ -f "$BIND_SAVE" ]; then
-        cp -f "$BIND_SAVE" "$BIND_FILE" && rm -f "$BIND_SAVE"
-        echo "==> 已恢复加速绑定状态, 无需在 App 中重新绑定。"
+        install -m600 "$BIND_SAVE" "$BIND_FILE" || return 1
+        rm -f "$BIND_SAVE"
+        printf '==> Restored the saved Leigod binding state.\n'
     fi
 }
 
-pre_install()  { save_bind_state; }
-pre_upgrade()  { save_bind_state; }
-pre_remove() {
+pre_install() { save_bind_state; }
+
+pre_upgrade() {
+    prepare_state_dir || return 1
+    rm -f "$RESTART_FILE"
+    if systemctl is-active --quiet leigod; then
+        install -m600 /dev/null "$RESTART_FILE" || return 1
+        # Stop writers before saving configuration or replacing their files.
+        systemctl stop leigod || return 1
+    fi
     save_bind_state
-    # pacman 删 unit 文件不会停掉运行中的服务, 不主动停会在卸载后留下幽灵
-    # 沙箱/进程, 守护进程持续重写 accelerator.ini 产生孤儿文件, 重装时报
-    # "文件系统中已存在" 冲突。`|| true` 容错: 服务未运行时 stop 返回非零。
-    systemctl stop leigod 2>/dev/null || true
+}
+
+pre_remove() {
+    systemctl stop leigod || return 1
+    # Also handle owned leftovers when the service was already inactive.
+    if [ -x /usr/lib/leigod/firewall.sh ]; then
+        /usr/lib/leigod/firewall.sh cleanup || printf 'WARNING: nftables cleanup failed; inspect tagged rules.\n' >&2
+    fi
+    if [ -x /usr/lib/leigod/ensure-wlan0.sh ]; then
+        /usr/lib/leigod/ensure-wlan0.sh cleanup || printf 'WARNING: virtual interface cleanup failed; inspect wlan0.\n' >&2
+    fi
+    save_bind_state
 }
 
 post_install_msg() {
-    echo ""
-    echo "=============================================="
-    echo " 雷神加速器 (SteamDeck 插件) 已安装"
-    echo "=============================================="
-    echo " 1. 启动服务并设为开机自启:"
-    echo "      sudo systemctl enable --now leigod"
-    echo ""
-    echo " 2. 手机绑定(手机须与电脑在同一局域网; 无需按 App 提示"
-    echo "    在电脑上执行任何命令):"
-    echo "      雷神加速器 App → 硬件加速 → 选择 SteamDeck"
-    echo "      → 一路点到底部完成绑定"
-    echo ""
-    echo " 端口布局: 5588 = sslh 门前过滤(只放行 WebSocket 升级连接)"
-    echo "           5589 = 插件 web 进程(127.0.0.1, 由 sslh 转发)"
-    echo "   官方 web 进程收到裸 HTTP 会崩溃 (WebSocket++ invalid state),"
-    echo "   门前过滤保证它只见到 WebSocket 连接。"
-    echo ""
-    echo " 日志: journalctl -xeu leigod"
-    echo "       tail -f /opt/leigod/log/steamdeck_acc_monitor.log"
-    echo ""
-    echo " 重要: 本包按设计与主机共享网络, 插件会以 root 修改主机路由表和 iptables 规则;"
-    echo "       卸载本包不会清空 mangle 表, 如需清理请自查: iptables -t mangle -L OUTPUT -n"
+    printf '%s\n' \
+        'Leigod plugin installed.' \
+        'Start: sudo systemctl enable --now leigod' \
+        'Phone: Leigod app -> hardware acceleration -> SteamDeck (same LAN).' \
+        'Configuration: /etc/leigod/device.conf (pacman preserves local edits).' \
+        'Ports: UDP 6066 discovery; TCP 5588 control; TCP 5589 backend.' \
+        'Keep backend 5589 and debug port 10001 inaccessible from untrusted networks.' \
+        'Stop/removal cleans package-tagged nftables rules and owned virtual wlan0.' \
+        'Unowned/physical wlan0 and other firewall rules are preserved.' \
+        'The vendor engine modifies host routes, iptables and ipset.' \
+        'Check any remaining engine rules; this package never flushes mangle globally.' \
+        'Documentation: /usr/share/doc/leigod-steamdeck-plugin/README.md'
 }
 
-post_install() { restore_bind_state; systemctl daemon-reload; post_install_msg; }
-post_upgrade() {
-    restore_bind_state
+post_install() {
+    restore_bind_state || return 1
     systemctl daemon-reload
-    # unit/沙箱配置可能随升级变化: 服务运行中则立即重启以应用新单元
-    # (if 语法保证服务未运行时整段以 0 退出, 否则 pacman 报安装脚本失败)
-    if systemctl is-active --quiet leigod; then
-        systemctl restart leigod
+    post_install_msg
+}
+
+post_upgrade() {
+    restore_bind_state || return 1
+    systemctl daemon-reload || return 1
+    if [ -f "$RESTART_FILE" ]; then
+        rm -f "$RESTART_FILE"
+        systemctl start leigod
     fi
 }
 
 post_remove() {
     systemctl daemon-reload
-    echo "已卸载(leigod 服务已自动停止)。残留自查: dummy wlan0 / mangle 规则"
-    echo "  (均为运行期产物, 重启即消失; mangle 如需立即清理: iptables -t mangle -L OUTPUT -n)"
+    printf '%s\n' \
+        'Leigod removed. Owned virtual interfaces and tagged nftables rules were scheduled for cleanup.' \
+        'Inspect cleanup warnings, unowned legacy wlan0, and vendor iptables/ipset leftovers if necessary.' \
+        'No global firewall tables were flushed.' \
+        'A private binding backup may remain in /var/lib/leigod-package-state for reinstall.' \
+        'Remove that directory explicitly if you want to forget the saved binding.'
 }

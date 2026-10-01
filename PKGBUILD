@@ -7,7 +7,7 @@
 
 pkgname=leigod-steamdeck-plugin
 pkgver=1.3.0.01
-pkgrel=3
+pkgrel=4
 pkgdesc="Leigod accelerator SteamDeck plugin on generic Linux via systemd SteamDeck emulation"
 arch=('x86_64')
 url="https://www.leigod.com"
