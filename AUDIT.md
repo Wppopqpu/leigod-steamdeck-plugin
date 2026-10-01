@@ -33,7 +33,9 @@ directories under `/usr/lib`, and documentation/license directories under
 installed system. The binding snapshot directory is created only by install hooks.
 
 No repository metadata, test/diagnostic scripts, raw captures, cached bytecode,
-developer home paths or built package archives belong in the runtime archive.
+files destined for a developer home directory or nested package archives belong
+in the installed payload. Standard `.BUILDINFO` metadata is retained and includes
+the build directory and package environment; it is not a claim of anonymized builds.
 The packaging license and its explicit proprietary-upstream scope notice are
 installed; that notice does not grant rights to the vendor code.
 

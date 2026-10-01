@@ -7,7 +7,7 @@
 
 pkgname=leigod-steamdeck-plugin
 pkgver=1.3.0.01
-pkgrel=5
+pkgrel=6
 pkgdesc="Leigod accelerator SteamDeck plugin on generic Linux via systemd SteamDeck emulation"
 arch=('x86_64')
 url="https://www.leigod.com"
@@ -69,7 +69,7 @@ sha256sums=('f81ec6a7e1a5bcef8cb8d1bf233141ece7d54250881422ecc2814c98df819e23'
             'af2d7249c8d84338a1b89ae56bcb987826d6151b908f969799728b590c13067c'
             '224777babb84aef10d3a3b97bfbac0158ecd0219850e4595ee8cd1ede2000be3'
             '1b2cda745d7b0a7124cee0ad045624ad3a9230caecfa9e0b95a296c97372e792'
-            'b7be2e750dd8cfa36ed5b08c07ec2cf11e88a939f0699beb75023f1b4e9f14d7')
+            '024422a4c215e4301c47d2cd76f3d2c057482c2314cf48e3c3a819d95e528767')
 
 prepare() {
     # web 进程端口后移到 5589, 5588 让给 sslh 门前过滤

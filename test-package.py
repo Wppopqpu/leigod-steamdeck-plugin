@@ -79,7 +79,8 @@ def main():
     assert re.search(r"^DEVICE_IP=auto$", (project / "device.conf").read_text(), re.M)
     assert not re.search(r"^token\s*=\s*\S+", (project / "accelerator.ini").read_text(), re.M)
     print(f"PASS: {len(seen)} expected files; pinned bytes, root ownership, modes, version and portable defaults")
-    print("PASS: no developer paths, diagnostics, tests, bytecode, captures or runtime credentials packaged")
+    print("PASS: no unexpected installed paths, diagnostics, tests, bytecode, captures or runtime credentials")
+    print("NOTE: standard .BUILDINFO retains the build directory and package environment")
 
 
 if __name__ == "__main__":
