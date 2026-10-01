@@ -5,6 +5,10 @@
 # leigod.service 完成, 本脚本不做任何特权操作。
 # 本方案网络与主机共享: 沙箱内插件会以 root 直接修改主机路由表与 iptables 规则, 属预期行为。
 
+# ExecStartPre and ExecStart receive separate mount namespaces. Create the
+# monitor's lock directory in this process's private root, not in ExecStartPre.
+mkdir -p /var/run || exit 1
+
 if [ $# -ge 1 ]; then
     CMD=$1
     shift
@@ -29,7 +33,9 @@ fi
 # 裸 HTTP 就地关闭(官方 web 进程遇裸 HTTP 会崩溃, 见 TROUBLESHOOTING.md #1)。
 # 启动失败则整个服务退出, 交由 systemd 重启并留下明确日志。
 SSLH_CONF="${LEIGOD_SSLH_CONF:-/etc/leigod/sslh-guard.cfg}"
-/usr/bin/sslh -f -F "$SSLH_CONF" &
+# Numeric logging prevents reverse DNS from blocking the first forwarded
+# bytes beyond the backend's WebSocket handshake timeout.
+/usr/bin/sslh -n -f -F "$SSLH_CONF" &
 sslh_pid=$!
 sleep 0.3
 if ! kill -0 "$sslh_pid" 2>/dev/null; then

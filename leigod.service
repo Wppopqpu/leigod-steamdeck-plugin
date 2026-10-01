@@ -12,8 +12,6 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStartPre=/usr/lib/leigod/ensure-wlan0.sh
-# /var/run 由根 tmpfs 自建: 官方锁文件须随沙箱销毁, 不可 bind 宿主 /run(MIGRATION.md §5)。
-ExecStartPre=/usr/bin/mkdir -p /var/run
 ExecStart=/usr/lib/leigod/run.sh /home/deck/leigod/steamdeck_acc_monitor.sh release
 Restart=always
 RestartSec=3
